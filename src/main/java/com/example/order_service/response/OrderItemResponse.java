@@ -16,6 +16,8 @@ public class OrderItemResponse implements Serializable {
   @Serial
   private static final long serialVersionUID = 1883951522016693533L;
   private Long productId;
+  private Long orderItemId;
+  private Long orderId;
   private Integer quantity;
   private Double price;
 }

@@ -17,6 +17,9 @@ public class OrderRequest {
   @NotNull(message = "User ID cannot be null")
   private Integer userId;
 
+  @NotNull(message = "Total price cannot be null")
+  private Double totalPrice;
+
   @NotNull(message = "Product list cannot be null")
   private List<@NotNull OrderItemRequest> orderItems;
 }
