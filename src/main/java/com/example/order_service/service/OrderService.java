@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import com.example.order_service.entity.OrderEntity;
 import com.example.order_service.entity.OrderItemEntity;
+import com.example.order_service.model.exception.InvalidOrderReportRequestException;
 import com.example.order_service.outbound.ProductApiClient;
 import com.example.order_service.repository.OrderRepository;
 import com.example.order_service.response.BaseResponse;
@@ -37,7 +38,7 @@ public class OrderService {
     LocalDateTime startDateTime = (startDate != null) ? startDate.atStartOfDay() : null;
     LocalDateTime endDateTime = (endDate != null) ? endDate.atTime(LocalTime.MAX) : null;
     if (productId == null && startDateTime == null && endDateTime == null) {
-      throw new IllegalArgumentException(
+      throw new InvalidOrderReportRequestException(
           "Either productId or a date range (startDate & endDate) is required.");
     }
     if (productId != null && startDateTime != null && endDateTime != null) {
