@@ -13,8 +13,7 @@ import com.example.order_service.entity.OrderItemEntity;
 import com.example.order_service.outbound.ProductApiClient;
 import com.example.order_service.repository.OrderRepository;
 import com.example.order_service.response.BaseResponse;
-import com.example.order_service.response.OrderItemResponse;
-import com.example.order_service.response.OrderResponse;
+import com.example.order_service.response.ReportResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -26,7 +25,7 @@ public class OrderService {
   private final ObjectMapper objectMapper;
   private final ProductApiClient productApiClient;
 
-  public BaseResponse<List<OrderResponse>> getOrderReport(Long productId, LocalDate startDate,
+  public BaseResponse<ReportResponse> getOrderReport(Long productId, LocalDate startDate,
       LocalDate endDate) {
     List<OrderEntity> orders;
     // Convert LocalDate to LocalDateTime
@@ -44,23 +43,16 @@ public class OrderService {
     } else {
       orders = orderRepository.findOrdersByDateRange(startDateTime, endDateTime);
     }
-    List<OrderResponse> orderResponses = orders.stream().map(this::convertToResponse).toList();
-    return BaseResponse.<List<OrderResponse>>builder().status(HttpStatus.OK.name())
-        .data(orderResponses).build();
-  }
-
-  private OrderResponse convertToResponse(OrderEntity order) {
-    List<OrderItemResponse> orderItemResponses =
-        order.getOrderItems().stream().map(this::convertOrderItemToResponse).toList();
-
-    return OrderResponse.builder().orderId(order.getOrderId()).userId(order.getUserId())
-        .totalPrice(order.getTotalPrice()).createdAt(order.getCreatedAt())
-        .orderItems(orderItemResponses).build();
-  }
-
-  private OrderItemResponse convertOrderItemToResponse(OrderItemEntity orderItem) {
-    return OrderItemResponse.builder().orderItemId(orderItem.getOrderItemId())
-        .productId(orderItem.getProductId()).quantity(orderItem.getQuantity())
-        .price(orderItem.getPrice()).orderId(orderItem.getOrder().getOrderId()).build();
+    Long totalProducts =
+        orders.stream()
+            .map(orderEntity -> orderEntity.getOrderItems().stream()
+                .map(OrderItemEntity::getProductId).distinct().count())
+            .reduce(Long::sum).orElse(0L);
+    Double totalRevenue =
+        orders.stream().map(OrderEntity::getTotalPrice).reduce(Double::sum).orElse(0.0);
+    ReportResponse reportResponse = ReportResponse.builder().totalOrders(orders.size())
+        .totalProducts(totalProducts).totalRevenue(totalRevenue).build();
+    return BaseResponse.<ReportResponse>builder().status(HttpStatus.OK.name())
+        .data(reportResponse).build();
   }
 }

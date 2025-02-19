@@ -1,7 +1,6 @@
 package com.example.order_service.controller;
 
 import java.time.LocalDate;
-import java.util.List;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.order_service.response.BaseResponse;
-import com.example.order_service.response.OrderResponse;
+import com.example.order_service.response.ReportResponse;
 import com.example.order_service.service.OrderService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -25,7 +24,7 @@ public class OrderController {
   private final ObjectMapper objectMapper;
 
   @GetMapping("/report")
-  public ResponseEntity<BaseResponse<List<OrderResponse>>> getOrderReport(
+  public ResponseEntity<BaseResponse<ReportResponse>> getOrderReport(
       @RequestParam(required = false) Long productId,
       @RequestParam(required = false) @DateTimeFormat(
           iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
