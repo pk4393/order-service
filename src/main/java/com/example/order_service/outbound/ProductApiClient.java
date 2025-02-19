@@ -14,7 +14,7 @@ import com.example.order_service.response.BaseResponse;
 @HttpExchange("/api/products")
 public interface ProductApiClient {
 
-  @GetExchange("/{userId}")
+  @GetExchange("/{productId}")
   BaseResponse<Product> findProduct(@PathVariable long productId);
 
   @PostExchange

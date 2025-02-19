@@ -13,7 +13,7 @@ public class ProductClientConfig {
 
   @Bean
   public ProductApiClient getProductApiClient() {
-    RestClient restClient = RestClient.builder().baseUrl("http://10.2.4.18:8084").build();
+    RestClient restClient = RestClient.builder().baseUrl("http://10.20.4.18:8084").build();
     HttpServiceProxyFactory proxyFactory =
         HttpServiceProxyFactory.builderFor(RestClientAdapter.create(restClient)).build();
     return proxyFactory.createClient(ProductApiClient.class);
