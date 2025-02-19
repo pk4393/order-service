@@ -1,7 +1,9 @@
 package com.example.order_service.controller;
 
 import java.time.LocalDate;
+import java.util.List;
 
+import com.example.order_service.response.OrderResponse;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,5 +37,11 @@ public class OrderController {
           "Either productId or a date range (startDate & endDate) is required.");
     }
     return ResponseEntity.ok(orderService.getOrderReport(productId, startDate, endDate));
+  }
+
+  @GetMapping("/getOrders")
+  public ResponseEntity<BaseResponse<List<OrderResponse>>> getOrders(
+      @RequestParam(name = "page") int page, @RequestParam(name = "size") int size) {
+    return ResponseEntity.ok(orderService.getOrders(page, size));
   }
 }
