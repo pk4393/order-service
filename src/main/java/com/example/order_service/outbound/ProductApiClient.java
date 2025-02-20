@@ -17,6 +17,6 @@ public interface ProductApiClient {
   @GetExchange("/{productId}")
   BaseResponse<Product> findProduct(@PathVariable long productId);
 
-  @PostExchange
+  @PostExchange("/find-by-ids")
   BaseResponse<List<Product>> findProductsByIds(@RequestBody List<Long> productIds);
 }
