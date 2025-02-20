@@ -13,6 +13,7 @@ import com.example.order_service.outbound.model.Product;
 import com.example.order_service.outbound.model.user.User;
 import com.example.order_service.request.createorder.CreateOrderRequest;
 import com.example.order_service.request.createorder.CreateOrderRequestItem;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -97,6 +98,7 @@ public class OrderService {
         .price(orderItem.getPrice()).orderId(orderItem.getOrder().getOrderId()).build();
   }
 
+  @Transactional
   public String createOrder(Integer userId, CreateOrderRequest createOrderRequest) {
 
     ResponseEntity<User> userResponse = userApiClient.findUser(userId);
@@ -109,29 +111,46 @@ public class OrderService {
             .map(CreateOrderRequestItem::getProductId)
             .toList();
 
-    log.info(String.valueOf(productIds));
+    log.info("Product IDs: {}", productIds);
 
     BaseResponse<List<Product>> productResponse = productApiClient.findProductsByIds(productIds);
 
-    OrderEntity orderEntity = new OrderEntity();
-    orderEntity.setUserId(userResponse.getBody().getId());
+    log.info("Responnsee: '{}'", productResponse);
 
-//    for (int i=0 ; i<productIds.size(); i++) {
-//
-//      productResponse = productApiClient.findProduct(productIds.get(i));
-//
-//      log.info("producttt responsseee: '{}'", productResponse);
-//
-//      if (!productResponse.getStatus().) {
-//        log.error("One or more products do not exist");
-//        throw new RuntimeException("One or more products do not exist");
-//      }
-//
-//        OrderItemEntity orderItemEntity = new OrderItemEntity();
-//        orderItemEntity.setProductId(productResponse.getData().getId());
-//        orderItemEntity.setPrice(productResponse.getData().getPrice());
-//        orderItemEntity.setQuantity(createOrderRequest.getItems().get(i).getQuantity());
-//    }
+    if (productResponse == null || productResponse.getData() == null) {
+      throw new RuntimeException("Product API response is null or invalid");
+    }
+
+    OrderEntity orderEntity = new OrderEntity();
+
+    if (userResponse.getBody() != null) {
+      orderEntity.setUserId(userResponse.getBody().getId());
+    } else {
+      throw new RuntimeException("User response is null or invalid");
+    }
+
+    List<OrderItemEntity> orderItemEntities = new ArrayList<>();
+
+    double price = 0.0;
+
+    for (int i = 0; i < productResponse.getData().size(); i++) {
+      OrderItemEntity orderItem = new OrderItemEntity();
+      orderItem.setProductId(productResponse.getData().get(i).getId());
+      orderItem.setQuantity(createOrderRequest.getItems().get(i).getQuantity());
+      orderItem.setPrice(productResponse.getData().get(i).getPrice());
+
+      orderItem.setOrder(orderEntity);
+
+      orderItemEntities.add(orderItem);
+
+      price += createOrderRequest.getItems().get(i).getQuantity() * productResponse.getData().get(i).getPrice();
+    }
+
+    orderEntity.setTotalPrice(price);
+
+    orderEntity.setOrderItems(orderItemEntities);
+
+    orderRepository.save(orderEntity);
 
     return "Order created successfully";
   }
