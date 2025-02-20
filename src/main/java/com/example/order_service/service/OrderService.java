@@ -62,13 +62,33 @@ public class OrderService {
     } else {
       orders = orderRepository.findOrdersByDateRange(startDateTime, endDateTime);
     }
-    Long totalProducts =
-        orders.stream()
-            .map(orderEntity -> orderEntity.getOrderItems().stream()
-                .map(OrderItemEntity::getProductId).distinct().count())
-            .reduce(Long::sum).orElse(0L);
-    Double totalRevenue =
-        orders.stream().map(OrderEntity::getTotalPrice).reduce(Double::sum).orElse(0.0);
+    long totalProducts;
+    if (productId != null) {
+      totalProducts =
+          orders.stream()
+              .map(orderEntity -> orderEntity.getOrderItems().stream()
+                  .map(OrderItemEntity::getProductId).filter(id -> id.equals(productId)).distinct()
+                  .count())
+              .reduce(Long::sum).orElse(0L);
+    } else {
+      totalProducts =
+          orders.stream()
+              .map(orderEntity -> orderEntity.getOrderItems().stream()
+                  .map(OrderItemEntity::getProductId).distinct().count())
+              .reduce(Long::sum).orElse(0L);
+    }
+    Double totalRevenue;
+    if (productId != null) {
+      totalRevenue = orders.stream()
+          .map(orderEntity -> orderEntity.getOrderItems().stream()
+              .filter(orderItemEntity -> orderItemEntity.getProductId().equals(productId))
+              .map(orderItemEntity -> orderItemEntity.getPrice() * orderItemEntity.getQuantity())
+              .reduce(Double::sum).orElse(0.0))
+          .reduce(Double::sum).orElse(0.0);
+    } else {
+      totalRevenue =
+          orders.stream().map(OrderEntity::getTotalPrice).reduce(Double::sum).orElse(0.0);
+    }
     ReportResponse reportResponse = ReportResponse.builder().totalOrders(orders.size())
         .totalProducts(totalProducts).totalRevenue(totalRevenue).build();
     return BaseResponse.<ReportResponse>builder().status(HttpStatus.OK.name()).data(reportResponse)
@@ -132,9 +152,8 @@ public class OrderService {
       throw new RuntimeException("User doesn't exist");
     }
 
-    List<Long> productIds = createOrderRequest.getItems().stream()
-            .map(CreateOrderRequestItem::getProductId)
-            .toList();
+    List<Long> productIds =
+        createOrderRequest.getItems().stream().map(CreateOrderRequestItem::getProductId).toList();
 
     log.info("Product IDs: {}", productIds);
 
@@ -168,7 +187,8 @@ public class OrderService {
 
       orderItemEntities.add(orderItem);
 
-      price += createOrderRequest.getItems().get(i).getQuantity() * productResponse.getData().get(i).getPrice();
+      price += createOrderRequest.getItems().get(i).getQuantity()
+          * productResponse.getData().get(i).getPrice();
     }
 
     orderEntity.setTotalPrice(price);
