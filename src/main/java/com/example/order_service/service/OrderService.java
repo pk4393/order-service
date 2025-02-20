@@ -5,16 +5,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
-import com.example.order_service.outbound.UserApiClient;
-import com.example.order_service.outbound.model.Product;
-import com.example.order_service.outbound.model.user.User;
-import com.example.order_service.request.createorder.CreateOrderRequest;
-import com.example.order_service.request.createorder.CreateOrderRequestItem;
-import jakarta.transaction.Transactional;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -25,22 +16,29 @@ import org.springframework.stereotype.Service;
 import com.example.order_service.entity.OrderEntity;
 import com.example.order_service.entity.OrderItemEntity;
 import com.example.order_service.model.exception.InvalidOrderReportRequestException;
+import com.example.order_service.model.exception.ProductNotFoundException;
 import com.example.order_service.outbound.ProductApiClient;
+import com.example.order_service.outbound.UserApiClient;
+import com.example.order_service.outbound.model.Product;
+import com.example.order_service.outbound.model.user.User;
 import com.example.order_service.repository.OrderRepository;
+import com.example.order_service.request.createorder.CreateOrderRequest;
+import com.example.order_service.request.createorder.CreateOrderRequestItem;
 import com.example.order_service.response.BaseResponse;
 import com.example.order_service.response.OrderItemResponse;
 import com.example.order_service.response.OrderResponse;
 import com.example.order_service.response.ReportResponse;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.client.HttpClientErrorException;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class OrderService {
   private final OrderRepository orderRepository;
-  private final ObjectMapper objectMapper;
   private final ProductApiClient productApiClient;
   private final UserApiClient userApiClient;
 
@@ -54,6 +52,8 @@ public class OrderService {
       throw new InvalidOrderReportRequestException(
           "Either productId or a date range (startDate & endDate) is required.");
     }
+    orderReportValidations(startDate, endDate, productId);
+
     if (productId != null && startDateTime != null && endDateTime != null) {
       orders =
           orderRepository.findOrdersByProductAndDateRange(productId, startDateTime, endDateTime);
@@ -71,8 +71,33 @@ public class OrderService {
         orders.stream().map(OrderEntity::getTotalPrice).reduce(Double::sum).orElse(0.0);
     ReportResponse reportResponse = ReportResponse.builder().totalOrders(orders.size())
         .totalProducts(totalProducts).totalRevenue(totalRevenue).build();
-    return BaseResponse.<ReportResponse>builder().status(HttpStatus.OK.name())
-        .data(reportResponse).build();
+    return BaseResponse.<ReportResponse>builder().status(HttpStatus.OK.name()).data(reportResponse)
+        .build();
+  }
+
+  private void orderReportValidations(LocalDate startDate, LocalDate endDate, Long productId) {
+    if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
+      throw new InvalidOrderReportRequestException("startDate cannot be after endDate.");
+    }
+    if (startDate != null && startDate.isAfter(LocalDate.now())) {
+      throw new InvalidOrderReportRequestException("startDate cannot be in the future.");
+    }
+    if (endDate != null && endDate.isAfter(LocalDate.now())) {
+      throw new InvalidOrderReportRequestException("endDate cannot be in the future.");
+    }
+    if (productId != null && productId <= 0) {
+      throw new InvalidOrderReportRequestException("Invalid productId provided.");
+    }
+    if (productId != null) {
+      try {
+        productApiClient.findProduct(productId);
+      } catch (HttpClientErrorException.NotFound e) {
+        throw new ProductNotFoundException("No orders found for productId: " + productId);
+      } catch (Exception e) {
+        log.error("findProduct api call failed with: {}", e.getMessage());
+        throw e;
+      }
+    }
   }
 
   public BaseResponse<List<OrderResponse>> getOrders(int page, int size) {

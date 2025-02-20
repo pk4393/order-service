@@ -7,13 +7,18 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.example.order_service.model.exception.InvalidOrderReportRequestException;
 import com.example.order_service.model.exception.MissingHeaderException;
+import com.example.order_service.model.exception.ProductNotFoundException;
 import com.example.order_service.response.BaseResponse;
 
+import lombok.extern.slf4j.Slf4j;
+
 @RestControllerAdvice
+@Slf4j
 public class OrderExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Object> handleException(Exception e) {
+    log.error(e.getMessage(), e);
     return ResponseEntity.internalServerError().body(BaseResponse.<String>builder()
         .status(HttpStatus.INTERNAL_SERVER_ERROR.name()).errorMessage(e.getMessage()).build());
   }
@@ -21,6 +26,7 @@ public class OrderExceptionHandler {
   @ExceptionHandler(InvalidOrderReportRequestException.class)
   public ResponseEntity<BaseResponse<String>> handleInvalidOrderReportRequestException(
       InvalidOrderReportRequestException e) {
+    log.error(e.getMessage(), e);
     return ResponseEntity.badRequest().body(BaseResponse.<String>builder()
         .status(HttpStatus.BAD_REQUEST.name()).errorMessage(e.getMessage()).build());
   }
@@ -28,7 +34,16 @@ public class OrderExceptionHandler {
   @ExceptionHandler(MissingHeaderException.class)
   public ResponseEntity<BaseResponse<String>> handleMissingHeaderException(
       MissingHeaderException e) {
+    log.error(e.getMessage(), e);
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(BaseResponse.<String>builder()
         .status(HttpStatus.UNAUTHORIZED.name()).errorMessage(e.getMessage()).build());
+  }
+
+  @ExceptionHandler(ProductNotFoundException.class)
+  public ResponseEntity<BaseResponse<String>> handleProductNotFoundException(
+      ProductNotFoundException e) {
+    log.error(e.getMessage(), e);
+    return ResponseEntity.badRequest().body(BaseResponse.<String>builder()
+        .status(HttpStatus.NOT_FOUND.name()).errorMessage(e.getMessage()).build());
   }
 }
