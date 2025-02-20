@@ -12,7 +12,7 @@ public class UserClientConfiguration {
 
     @Bean
     public UserApiClient getUserApiClient() {
-        RestClient restClient = RestClient.builder().baseUrl("http://localhost:8081").build();
+        RestClient restClient = RestClient.builder().baseUrl("http://10.20.2.166:8081").build();
         HttpServiceProxyFactory proxyFactory =
                 HttpServiceProxyFactory.builderFor(RestClientAdapter.create(restClient)).build();
         return proxyFactory.createClient(UserApiClient.class);
