@@ -3,6 +3,7 @@ package com.example.order_service.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import lombok.AllArgsConstructor;
@@ -20,5 +21,7 @@ public class OrderDTO {
   private Integer userId;
   private List<OrderItemDTO> orderItems;
   private Double totalPrice;
+
+  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
   private LocalDateTime createdAt;
 }
