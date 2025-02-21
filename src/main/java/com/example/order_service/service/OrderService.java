@@ -1,19 +1,5 @@
 package com.example.order_service.service;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
-
 import com.example.order_service.entity.OrderEntity;
 import com.example.order_service.entity.OrderItemEntity;
 import com.example.order_service.model.exception.InvalidOrderReportRequestException;
@@ -22,16 +8,28 @@ import com.example.order_service.model.exception.UserNotFoundException;
 import com.example.order_service.outbound.ProductApiClient;
 import com.example.order_service.outbound.UserApiClient;
 import com.example.order_service.outbound.model.Product;
-import com.example.order_service.outbound.model.user.User;
 import com.example.order_service.repository.OrderRepository;
 import com.example.order_service.request.createorder.CreateOrderRequest;
 import com.example.order_service.request.createorder.CreateOrderRequestItem;
 import com.example.order_service.response.BaseResponse;
 import com.example.order_service.response.ReportResponse;
-
+import com.example.order_service.response.user.UserResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -124,7 +122,7 @@ public class OrderService {
     Page<OrderEntity> orderPage;
 
     if (userId != null && productId != null) {
-      ResponseEntity<User> userResponse = userApiClient.findUser(Math.toIntExact(userId));
+      ResponseEntity<BaseResponse<UserResponse>> userResponse = userApiClient.findUser(Math.toIntExact(userId));
       if (!userResponse.getStatusCode().is2xxSuccessful()) {
         log.error("User doesn't exist");
         throw new UserNotFoundException("User doesn't exist");
@@ -132,7 +130,7 @@ public class OrderService {
       orderPage =
               orderRepository.findOrderIdsByUserIdAndProductIdPaginated(userId, productId, pageable);
     } else if (userId != null) {
-      ResponseEntity<User> userResponse = userApiClient.findUser(Math.toIntExact(userId));
+      ResponseEntity<BaseResponse<UserResponse>> userResponse = userApiClient.findUser(Math.toIntExact(userId));
       if (!userResponse.getStatusCode().is2xxSuccessful()) {
         log.error("User doesn't exist");
         throw new UserNotFoundException("User doesn't exist");
@@ -152,7 +150,8 @@ public class OrderService {
   @Transactional
   public String createOrder(Integer userId, CreateOrderRequest createOrderRequest) {
 
-    ResponseEntity<User> userResponse = userApiClient.findUser(userId);
+    ResponseEntity<BaseResponse<UserResponse>> userResponse = userApiClient.findUser(userId);
+    log.info("Checkkkkk: '{}'", userResponse.getBody().toString());
     if (!userResponse.getStatusCode().is2xxSuccessful()) {
       log.error("User doesn't exist");
       throw new RuntimeException("User doesn't exist");
@@ -174,7 +173,7 @@ public class OrderService {
     OrderEntity orderEntity = new OrderEntity();
 
     if (userResponse.getBody() != null) {
-      orderEntity.setUserId(userResponse.getBody().getId());
+      orderEntity.setUserId(userResponse.getBody().getData().getId());
     } else {
       throw new RuntimeException("User response is null or invalid");
     }
