@@ -6,6 +6,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.example.order_service.model.exception.UserNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -120,27 +121,34 @@ public class OrderService {
     }
   }
 
-  public BaseResponse<List<OrderResponse>> getOrders(int page, int size) {
+  public BaseResponse<List<Long>> getOrders(int page, int size, Long userId, Long productId) {
     Pageable pageable = PageRequest.of(page, size);
-    Page<OrderEntity> orderPage = orderRepository.findAll(pageable);
-    List<OrderEntity> orders = orderPage.getContent();
-    List<OrderResponse> orderResponses = orders.stream().map(this::convertToResponse).toList();
-    return BaseResponse.<List<OrderResponse>>builder().status(HttpStatus.OK.name())
-        .data(orderResponses).build();
-  }
+    Page<OrderEntity> orderPage;
 
-  private OrderResponse convertToResponse(OrderEntity order) {
-    List<OrderItemResponse> orderItemResponses =
-        order.getOrderItems().stream().map(this::convertOrderItemToResponse).toList();
-    return OrderResponse.builder().orderId(order.getOrderId()).userId(order.getUserId())
-        .totalPrice(order.getTotalPrice()).createdAt(order.getCreatedAt())
-        .orderItems(orderItemResponses).build();
-  }
+    if (userId != null && productId != null) {
+      ResponseEntity<User> userResponse = userApiClient.findUser(Math.toIntExact(userId));
+      if (!userResponse.getStatusCode().is2xxSuccessful()) {
+        log.error("User doesn't exist");
+        throw new UserNotFoundException("User doesn't exist");
+      }
+      orderPage =
+              orderRepository.findOrderIdsByUserIdAndProductIdPaginated(userId, productId, pageable);
+    } else if (userId != null) {
+      ResponseEntity<User> userResponse = userApiClient.findUser(Math.toIntExact(userId));
+      if (!userResponse.getStatusCode().is2xxSuccessful()) {
+        log.error("User doesn't exist");
+        throw new UserNotFoundException("User doesn't exist");
+      }
+      orderPage = orderRepository.findOrdersByUserIdPaginated(userId, pageable);
+    } else if (productId != null) {
+      orderPage = orderRepository.findOrdersByProductIdPaginated(productId, pageable);
+    } else {
+      orderPage = orderRepository.findAll(pageable);
+    }
 
-  private OrderItemResponse convertOrderItemToResponse(OrderItemEntity orderItem) {
-    return OrderItemResponse.builder().orderItemId(orderItem.getOrderItemId())
-        .productId(orderItem.getProductId()).quantity(orderItem.getQuantity())
-        .price(orderItem.getPrice()).orderId(orderItem.getOrder().getOrderId()).build();
+    List<Long> orderIds = orderPage.getContent().stream().map(OrderEntity::getOrderId).toList();
+
+    return BaseResponse.<List<Long>>builder().status(HttpStatus.OK.name()).data(orderIds).build();
   }
 
   @Transactional

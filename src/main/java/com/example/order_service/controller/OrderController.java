@@ -47,8 +47,11 @@ public class OrderController {
   }
 
   @GetMapping("/getOrders")
-  public ResponseEntity<BaseResponse<List<OrderResponse>>> getOrders(
-      @RequestParam(name = "page") int page, @RequestParam(name = "size") int size) {
-    return ResponseEntity.ok(orderService.getOrders(page, size));
+  public ResponseEntity<BaseResponse<List<Long>>> getOrders(
+          @RequestParam(name = "page") int page,
+          @RequestParam(name = "size") int size,
+          @RequestParam(required = false) Long userId,
+          @RequestParam(required = false) Long productId) {
+    return ResponseEntity.ok(orderService.getOrders(page, size, userId, productId));
   }
 }
