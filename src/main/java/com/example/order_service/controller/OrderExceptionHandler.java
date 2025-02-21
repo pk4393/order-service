@@ -1,5 +1,6 @@
 package com.example.order_service.controller;
 
+import com.example.order_service.exception.CreateOrderException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -47,6 +48,20 @@ public class OrderExceptionHandler {
     return ResponseEntity.badRequest().body(BaseResponse.<String>builder()
         .status(HttpStatus.NOT_FOUND.name()).errorMessage(e.getMessage()).build());
   }
+
+  @ExceptionHandler(CreateOrderException.class)
+  public ResponseEntity<BaseResponse<String>> handleCreateOrderException(CreateOrderException e) {
+    log.error(e.getMessage(), e);
+
+    BaseResponse<String> response = BaseResponse.<String>builder()
+            .status(HttpStatus.NOT_FOUND.name())
+            .errorMessage(e.getMessage())
+            .build();
+
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(response);
+  }
+
 
   @ExceptionHandler(MissingServletRequestParameterException.class)
   public ResponseEntity<BaseResponse<String>> handleMissingRequestParameter(

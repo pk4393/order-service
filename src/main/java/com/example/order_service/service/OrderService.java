@@ -2,6 +2,7 @@ package com.example.order_service.service;
 
 import com.example.order_service.entity.OrderEntity;
 import com.example.order_service.entity.OrderItemEntity;
+import com.example.order_service.exception.CreateOrderException;
 import com.example.order_service.model.exception.InvalidOrderReportRequestException;
 import com.example.order_service.model.exception.ProductNotFoundException;
 import com.example.order_service.model.exception.UserNotFoundException;
@@ -148,26 +149,26 @@ public class OrderService {
   }
 
   @Transactional
-  public String createOrder(Integer userId, CreateOrderRequest createOrderRequest) {
+  public BaseResponse<String> createOrder(Integer userId, CreateOrderRequest createOrderRequest) {
 
     ResponseEntity<BaseResponse<UserResponse>> userResponse = userApiClient.findUser(userId);
-    log.info("Checkkkkk: '{}'", userResponse.getBody().toString());
+
     if (!userResponse.getStatusCode().is2xxSuccessful()) {
       log.error("User doesn't exist");
-      throw new RuntimeException("User doesn't exist");
+      throw new CreateOrderException("User doesn't exist");
     }
 
     List<Long> productIds =
-        createOrderRequest.getItems().stream().map(CreateOrderRequestItem::getProductId).toList();
+            createOrderRequest.getItems().stream().map(CreateOrderRequestItem::getProductId).toList();
 
     log.info("Product IDs: {}", productIds);
 
     BaseResponse<List<Product>> productResponse = productApiClient.findProductsByIds(productIds);
 
-    log.info("Responnsee: '{}'", productResponse);
+    log.info("Response: '{}'", productResponse);
 
-    if (productResponse == null || productResponse.getData() == null) {
-      throw new RuntimeException("Product API response is null or invalid");
+    if (productResponse.getData() == null || productResponse.getData().size() != productIds.size()) {
+      throw new CreateOrderException("One or more products don't exist");
     }
 
     OrderEntity orderEntity = new OrderEntity();
@@ -175,11 +176,10 @@ public class OrderService {
     if (userResponse.getBody() != null) {
       orderEntity.setUserId(userResponse.getBody().getData().getId());
     } else {
-      throw new RuntimeException("User response is null or invalid");
+      throw new CreateOrderException("User response is null or invalid");
     }
 
     List<OrderItemEntity> orderItemEntities = new ArrayList<>();
-
     double price = 0.0;
 
     for (int i = 0; i < productResponse.getData().size(); i++) {
@@ -187,22 +187,23 @@ public class OrderService {
       orderItem.setProductId(productResponse.getData().get(i).getId());
       orderItem.setQuantity(createOrderRequest.getItems().get(i).getQuantity());
       orderItem.setPrice(productResponse.getData().get(i).getPrice());
-
       orderItem.setOrder(orderEntity);
 
       orderItemEntities.add(orderItem);
-
       price += createOrderRequest.getItems().get(i).getQuantity()
-          * productResponse.getData().get(i).getPrice();
+              * productResponse.getData().get(i).getPrice();
     }
 
     orderEntity.setTotalPrice(price);
-
     orderEntity.setOrderItems(orderItemEntities);
 
     orderRepository.save(orderEntity);
 
-    return "Order created successfully";
+    // Return a BaseResponse containing the success message, now wrapped as a response
+    return BaseResponse.<String>builder()
+            .status(HttpStatus.OK.name()) // Success status
+            .data("Order created successfully") // Success message
+            .build();
   }
 
 }
