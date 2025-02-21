@@ -4,7 +4,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -29,12 +31,14 @@ public class OrderController {
   private final ObjectMapper objectMapper;
 
   @PostMapping("/order")
-  public ResponseEntity<String> createOrder(
+  public ResponseEntity<BaseResponse<String>> createOrder(
           @RequestParam Integer userId,
-          @RequestBody CreateOrderRequest createOrderRequest) {
-    return ResponseEntity.ok(orderService.createOrder(userId, createOrderRequest));
-  }
+          @Validated @RequestBody CreateOrderRequest createOrderRequest) {
 
+    BaseResponse<String> response = orderService.createOrder(userId, createOrderRequest);
+
+    return ResponseEntity.ok(response);
+  }
 
   @GetMapping("/report")
   public ResponseEntity<BaseResponse<ReportResponse>> getOrderReport(
