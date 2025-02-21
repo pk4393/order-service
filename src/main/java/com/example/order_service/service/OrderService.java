@@ -6,18 +6,19 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.example.order_service.model.exception.UserNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 
 import com.example.order_service.entity.OrderEntity;
 import com.example.order_service.entity.OrderItemEntity;
 import com.example.order_service.model.exception.InvalidOrderReportRequestException;
 import com.example.order_service.model.exception.ProductNotFoundException;
+import com.example.order_service.model.exception.UserNotFoundException;
 import com.example.order_service.outbound.ProductApiClient;
 import com.example.order_service.outbound.UserApiClient;
 import com.example.order_service.outbound.model.Product;
@@ -26,14 +27,11 @@ import com.example.order_service.repository.OrderRepository;
 import com.example.order_service.request.createorder.CreateOrderRequest;
 import com.example.order_service.request.createorder.CreateOrderRequestItem;
 import com.example.order_service.response.BaseResponse;
-import com.example.order_service.response.OrderItemResponse;
-import com.example.order_service.response.OrderResponse;
 import com.example.order_service.response.ReportResponse;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.client.HttpClientErrorException;
 
 @Service
 @RequiredArgsConstructor
