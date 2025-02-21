@@ -3,6 +3,7 @@ package com.example.order_service.controller;
 import com.example.order_service.exception.CreateOrderException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -61,4 +62,14 @@ public class OrderExceptionHandler {
             .body(response);
   }
 
+
+  @ExceptionHandler(MissingServletRequestParameterException.class)
+  public ResponseEntity<BaseResponse<String>> handleMissingRequestParameter(
+      MissingServletRequestParameterException ex) {
+    log.error(ex.getMessage(), ex);
+    BaseResponse<String> baseResponse = BaseResponse.<String>builder()
+        .errorMessage("Missing required request parameter: " + ex.getParameterName())
+        .status(HttpStatus.BAD_REQUEST.name()).build();
+    return ResponseEntity.badRequest().body(baseResponse);
+  }
 }
