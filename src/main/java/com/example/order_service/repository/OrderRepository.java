@@ -3,6 +3,7 @@ package com.example.order_service.repository;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.example.order_service.entity.OrderItemEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -28,14 +29,11 @@ public interface OrderRepository extends JpaRepository<OrderEntity, Long> {
   List<OrderEntity> findOrdersByProductAndDateRange(@Param("productId") Long productId,
       @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-  @Query("SELECT DISTINCT o FROM OrderEntity o JOIN o.orderItems oi WHERE oi.productId = :productId")
-  Page<OrderEntity> findOrdersByProductIdPaginated(@Param("productId") Long productId, Pageable pageable);
 
   @Query("SELECT o FROM OrderEntity o WHERE o.userId = :userId")
   Page<OrderEntity> findOrdersByUserIdPaginated(@Param("userId") Long userId, Pageable pageable);
 
-  @Query("SELECT DISTINCT o FROM OrderEntity o JOIN o.orderItems oi WHERE o.userId = :userId AND oi.productId = :productId")
-  Page<OrderEntity> findOrderIdsByUserIdAndProductIdPaginated(@Param("userId") Long userId,
-                                                              @Param("productId") Long productId,
-                                                              Pageable pageable);
+  @Query("SELECT oi FROM OrderItemEntity oi WHERE oi.order.orderId IN :orderIds")
+  List<OrderItemEntity> findOrderItemsByOrderIds(@Param("orderIds") List<Long> orderIds);
+
 }
