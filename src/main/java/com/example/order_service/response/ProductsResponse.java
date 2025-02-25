@@ -16,7 +16,6 @@ import java.io.Serializable;
 @Data
 public class ProductsResponse implements Serializable {
 
-    private Long id;
     private String title;
     private String description;
     private Double price;
@@ -25,7 +24,6 @@ public class ProductsResponse implements Serializable {
     private Product product;
 
     public ProductsResponse(Product product) {
-        this.id = product.getId();
         this.title = product.getTitle();
         this.price = product.getPrice();
         this.description = product.getDescription();
