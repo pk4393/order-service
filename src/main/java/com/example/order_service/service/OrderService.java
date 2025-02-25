@@ -1,5 +1,23 @@
 package com.example.order_service.service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
+
 import com.example.order_service.entity.OrderEntity;
 import com.example.order_service.entity.OrderItemEntity;
 import com.example.order_service.exception.CreateOrderException;
@@ -19,26 +37,10 @@ import com.example.order_service.response.OrdersListingResponse;
 import com.example.order_service.response.ProductsResponse;
 import com.example.order_service.response.ReportResponse;
 import com.example.order_service.response.user.UserResponse;
+
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -69,20 +71,19 @@ public class OrderService {
       orders = orderRepository.findOrdersByDateRange(startDateTime, endDateTime);
     }
     long totalProducts;
+    List<Long> productIds;
     if (productId != null) {
-      totalProducts =
-          orders.stream()
-              .map(orderEntity -> orderEntity.getOrderItems().stream()
-                  .map(OrderItemEntity::getProductId).filter(id -> id.equals(productId)).distinct()
-                  .count())
-              .reduce(Long::sum).orElse(0L);
+      productIds = orders.stream()
+          .flatMap(orderEntity -> orderEntity.getOrderItems().stream()
+              .map(OrderItemEntity::getProductId).filter(id -> id.equals(productId)).distinct())
+          .toList();
+
     } else {
-      totalProducts =
-          orders.stream()
-              .map(orderEntity -> orderEntity.getOrderItems().stream()
-                  .map(OrderItemEntity::getProductId).distinct().count())
-              .reduce(Long::sum).orElse(0L);
+      productIds = orders.stream().flatMap(orderEntity -> orderEntity.getOrderItems().stream()
+          .map(OrderItemEntity::getProductId).distinct()).toList();
     }
+    totalProducts = productIds.size();
+    List<String> products = fetchProducts(productIds.stream().distinct().toList());
     Double totalRevenue;
     if (productId != null) {
       totalRevenue = orders.stream()
@@ -96,9 +97,21 @@ public class OrderService {
           orders.stream().map(OrderEntity::getTotalPrice).reduce(Double::sum).orElse(0.0);
     }
     ReportResponse reportResponse = ReportResponse.builder().totalOrders(orders.size())
-        .totalProducts(totalProducts).totalRevenue(totalRevenue).build();
+        .totalProducts(totalProducts).totalRevenue(totalRevenue).products(products).build();
     return BaseResponse.<ReportResponse>builder().status(HttpStatus.OK.name()).data(reportResponse)
         .build();
+  }
+
+  private List<String> fetchProducts(List<Long> productIds) {
+    try {
+      BaseResponse<List<Product>> products = productApiClient.findProductsByIds(productIds);
+      if ("OK".equals(products.getStatus())) {
+        return products.getData().stream().map(Product::getBrand).toList();
+      }
+    } catch (Exception ex) {
+      log.error(ex.getMessage(), ex);
+    }
+    return Collections.emptyList();
   }
 
   private void orderReportValidations(LocalDate startDate, LocalDate endDate, Long productId) {
@@ -117,11 +130,11 @@ public class OrderService {
     if (productId != null) {
       try {
         productApiClient.findProduct(productId);
-      } catch (HttpClientErrorException.NotFound e) {
+      } catch (HttpClientErrorException.NotFound ex) {
         throw new ProductNotFoundException("No orders found for productId: " + productId);
-      } catch (Exception e) {
-        log.error("findProduct api call failed with: {}", e.getMessage());
-        throw e;
+      } catch (Exception ex) {
+        log.error("findProduct api call failed with: {}", ex.getMessage());
+        throw ex;
       }
     }
   }

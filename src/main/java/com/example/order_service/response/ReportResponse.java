@@ -2,6 +2,7 @@ package com.example.order_service.response;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.List;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,4 +19,5 @@ public class ReportResponse implements Serializable {
   private long totalOrders;
   private long totalProducts;
   private Double totalRevenue;
+  private List<String> products;
 }
