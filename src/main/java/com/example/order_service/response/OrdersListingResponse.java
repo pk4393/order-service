@@ -1,7 +1,6 @@
 package com.example.order_service.response;
 
 import com.example.order_service.response.user.UserResponse;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

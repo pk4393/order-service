@@ -33,7 +33,5 @@ public class OrderItemResponse implements Serializable {
     this.quantity = quantity;
     this.price = price;
     this.product = product;
-
-    System.out.println("DEBUG: Creating OrderItemResponse -> OrderID: " + orderId + ", ProductID: " + productId);
   }
 }

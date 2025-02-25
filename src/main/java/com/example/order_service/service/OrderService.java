@@ -191,8 +191,6 @@ public class OrderService {
                 .map(order -> {
                     List<OrderItemResponse> items = orderItemMap.getOrDefault(order.getOrderId(), List.of());
                     return new OrderResponse(
-                            order.getOrderId(),
-                            user.getId(),
                             items,
                             order.getTotalPrice()
                     );

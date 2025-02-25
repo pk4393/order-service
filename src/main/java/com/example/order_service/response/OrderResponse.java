@@ -21,20 +21,14 @@ import java.util.List;
 public class OrderResponse implements Serializable {
   @Serial
   private static final long serialVersionUID = -285636647845937370L;
-  private Long orderId;
-  private Integer userId;
   private List<OrderItemResponse> orderItems;
   private Double totalPrice;
   private List<Product> productsResponse;
 
 
 
-  public OrderResponse(Long orderId, int id, List<OrderItemResponse> orderItemResponseList, Double totalPrice) {
-    this.orderId=orderId;
+  public OrderResponse(List<OrderItemResponse> orderItemResponseList, Double totalPrice) {
     this.totalPrice = totalPrice;
-    this.userId=id;
     this.orderItems=orderItemResponseList;
-//    this.productsResponse= data;
   }
-
 }
