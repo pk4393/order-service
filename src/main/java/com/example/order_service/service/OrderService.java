@@ -44,87 +44,87 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class OrderService {
-    private final OrderRepository orderRepository;
-    private final ProductApiClient productApiClient;
-    private final UserApiClient userApiClient;
+  private final OrderRepository orderRepository;
+  private final ProductApiClient productApiClient;
+  private final UserApiClient userApiClient;
 
-    public BaseResponse<ReportResponse> getOrderReport(Long productId, LocalDate startDate,
-                                                       LocalDate endDate) {
-        List<OrderEntity> orders;
-        // Convert LocalDate to LocalDateTime
-        LocalDateTime startDateTime = (startDate != null) ? startDate.atStartOfDay() : null;
-        LocalDateTime endDateTime = (endDate != null) ? endDate.atTime(LocalTime.MAX) : null;
-        if (productId == null && startDateTime == null && endDateTime == null) {
-            throw new InvalidOrderReportRequestException(
-                    "Either productId or a date range (startDate & endDate) is required.");
-        }
-        orderReportValidations(startDate, endDate, productId);
-
-        if (productId != null && startDateTime != null && endDateTime != null) {
-            orders =
-                    orderRepository.findOrdersByProductAndDateRange(productId, startDateTime, endDateTime);
-        } else if (productId != null) {
-            orders = orderRepository.findOrdersByProductId(productId);
-        } else {
-            orders = orderRepository.findOrdersByDateRange(startDateTime, endDateTime);
-        }
-        long totalProducts;
-        if (productId != null) {
-            totalProducts =
-                    orders.stream()
-                            .map(orderEntity -> orderEntity.getOrderItems().stream()
-                                    .map(OrderItemEntity::getProductId).filter(id -> id.equals(productId)).distinct()
-                                    .count())
-                            .reduce(Long::sum).orElse(0L);
-        } else {
-            totalProducts =
-                    orders.stream()
-                            .map(orderEntity -> orderEntity.getOrderItems().stream()
-                                    .map(OrderItemEntity::getProductId).distinct().count())
-                            .reduce(Long::sum).orElse(0L);
-        }
-        Double totalRevenue;
-        if (productId != null) {
-            totalRevenue = orders.stream()
-                    .map(orderEntity -> orderEntity.getOrderItems().stream()
-                            .filter(orderItemEntity -> orderItemEntity.getProductId().equals(productId))
-                            .map(orderItemEntity -> orderItemEntity.getPrice() * orderItemEntity.getQuantity())
-                            .reduce(Double::sum).orElse(0.0))
-                    .reduce(Double::sum).orElse(0.0);
-        } else {
-            totalRevenue =
-                    orders.stream().map(OrderEntity::getTotalPrice).reduce(Double::sum).orElse(0.0);
-        }
-        ReportResponse reportResponse = ReportResponse.builder().totalOrders(orders.size())
-                .totalProducts(totalProducts).totalRevenue(totalRevenue).build();
-        return BaseResponse.<ReportResponse>builder().status(HttpStatus.OK.name()).data(reportResponse)
-                .build();
+  public BaseResponse<ReportResponse> getOrderReport(Long productId, LocalDate startDate,
+      LocalDate endDate) {
+    List<OrderEntity> orders;
+    // Convert LocalDate to LocalDateTime
+    LocalDateTime startDateTime = (startDate != null) ? startDate.atStartOfDay() : null;
+    LocalDateTime endDateTime = (endDate != null) ? endDate.atTime(LocalTime.MAX) : null;
+    if (productId == null && startDateTime == null && endDateTime == null) {
+      throw new InvalidOrderReportRequestException(
+          "Either productId or a date range (startDate & endDate) is required.");
     }
+    orderReportValidations(startDate, endDate, productId);
 
-    private void orderReportValidations(LocalDate startDate, LocalDate endDate, Long productId) {
-        if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
-            throw new InvalidOrderReportRequestException("startDate cannot be after endDate.");
-        }
-        if (startDate != null && startDate.isAfter(LocalDate.now())) {
-            throw new InvalidOrderReportRequestException("startDate cannot be in the future.");
-        }
-        if (endDate != null && endDate.isAfter(LocalDate.now())) {
-            throw new InvalidOrderReportRequestException("endDate cannot be in the future.");
-        }
-        if (productId != null && productId <= 0) {
-            throw new InvalidOrderReportRequestException("Invalid productId provided.");
-        }
-        if (productId != null) {
-            try {
-                productApiClient.findProduct(productId);
-            } catch (HttpClientErrorException.NotFound e) {
-                throw new ProductNotFoundException("No orders found for productId: " + productId);
-            } catch (Exception e) {
-                log.error("findProduct api call failed with: {}", e.getMessage());
-                throw e;
-            }
-        }
+    if (productId != null && startDateTime != null && endDateTime != null) {
+      orders =
+          orderRepository.findOrdersByProductAndDateRange(productId, startDateTime, endDateTime);
+    } else if (productId != null) {
+      orders = orderRepository.findOrdersByProductId(productId);
+    } else {
+      orders = orderRepository.findOrdersByDateRange(startDateTime, endDateTime);
     }
+    long totalProducts;
+    if (productId != null) {
+      totalProducts =
+          orders.stream()
+              .map(orderEntity -> orderEntity.getOrderItems().stream()
+                  .map(OrderItemEntity::getProductId).filter(id -> id.equals(productId)).distinct()
+                  .count())
+              .reduce(Long::sum).orElse(0L);
+    } else {
+      totalProducts =
+          orders.stream()
+              .map(orderEntity -> orderEntity.getOrderItems().stream()
+                  .map(OrderItemEntity::getProductId).distinct().count())
+              .reduce(Long::sum).orElse(0L);
+    }
+    Double totalRevenue;
+    if (productId != null) {
+      totalRevenue = orders.stream()
+          .map(orderEntity -> orderEntity.getOrderItems().stream()
+              .filter(orderItemEntity -> orderItemEntity.getProductId().equals(productId))
+              .map(orderItemEntity -> orderItemEntity.getPrice() * orderItemEntity.getQuantity())
+              .reduce(Double::sum).orElse(0.0))
+          .reduce(Double::sum).orElse(0.0);
+    } else {
+      totalRevenue =
+          orders.stream().map(OrderEntity::getTotalPrice).reduce(Double::sum).orElse(0.0);
+    }
+    ReportResponse reportResponse = ReportResponse.builder().totalOrders(orders.size())
+        .totalProducts(totalProducts).totalRevenue(totalRevenue).build();
+    return BaseResponse.<ReportResponse>builder().status(HttpStatus.OK.name()).data(reportResponse)
+        .build();
+  }
+
+  private void orderReportValidations(LocalDate startDate, LocalDate endDate, Long productId) {
+    if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
+      throw new InvalidOrderReportRequestException("startDate cannot be after endDate.");
+    }
+    if (startDate != null && startDate.isAfter(LocalDate.now())) {
+      throw new InvalidOrderReportRequestException("startDate cannot be in the future.");
+    }
+    if (endDate != null && endDate.isAfter(LocalDate.now())) {
+      throw new InvalidOrderReportRequestException("endDate cannot be in the future.");
+    }
+    if (productId != null && productId <= 0) {
+      throw new InvalidOrderReportRequestException("Invalid productId provided.");
+    }
+    if (productId != null) {
+      try {
+        productApiClient.findProduct(productId);
+      } catch (HttpClientErrorException.NotFound e) {
+        throw new ProductNotFoundException("No orders found for productId: " + productId);
+      } catch (Exception e) {
+        log.error("findProduct api call failed with: {}", e.getMessage());
+        throw e;
+      }
+    }
+  }
 
     public BaseResponse<OrdersListingResponse> getOrders(int page, int size, Long userId) {
         if (userId == null) {
