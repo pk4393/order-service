@@ -1,6 +1,7 @@
 package com.example.order_service.controller;
 
 import com.example.order_service.exception.CreateOrderException;
+import com.example.order_service.exception.LimitedStockException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -50,17 +51,17 @@ public class OrderExceptionHandler {
   }
 
   @ExceptionHandler(CreateOrderException.class)
-  public ResponseEntity<BaseResponse<String>> handleCreateOrderException(CreateOrderException e) {
-    log.error(e.getMessage(), e);
+  public ResponseEntity<BaseResponse<String>> handleCreateOrderException(CreateOrderException ex) {
+    log.error("CreateOrderException: {}", ex.getMessage());
 
-    BaseResponse<String> response = BaseResponse.<String>builder()
-            .status(HttpStatus.NOT_FOUND.name())
-            .errorMessage(e.getMessage())
+    BaseResponse<String> baseResponse = BaseResponse.<String>builder()
+            .errorMessage(ex.getMessage())
+            .status(HttpStatus.BAD_REQUEST.name())
             .build();
 
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-            .body(response);
+    return ResponseEntity.badRequest().body(baseResponse);
   }
+
 
 
   @ExceptionHandler(MissingServletRequestParameterException.class)
@@ -70,6 +71,19 @@ public class OrderExceptionHandler {
     BaseResponse<String> baseResponse = BaseResponse.<String>builder()
         .errorMessage("Missing required request parameter: " + ex.getParameterName())
         .status(HttpStatus.BAD_REQUEST.name()).build();
+    return ResponseEntity.badRequest().body(baseResponse);
+  }
+
+  @ExceptionHandler(LimitedStockException.class)
+  public ResponseEntity<BaseResponse<String>> handleLimitedStockException(
+          LimitedStockException ex) {
+    log.error(ex.getMessage(), ex);
+
+    BaseResponse<String> baseResponse = BaseResponse.<String>builder()
+            .errorMessage(ex.getMessage()) // Pass exception message
+            .status(HttpStatus.BAD_REQUEST.name())
+            .build();
+
     return ResponseEntity.badRequest().body(baseResponse);
   }
 }

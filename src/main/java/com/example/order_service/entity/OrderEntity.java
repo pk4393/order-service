@@ -41,9 +41,13 @@ public class OrderEntity implements Serializable {
   @Column(nullable = false)
   private Double totalPrice;
 
+  @Column(nullable = false)
+  private Double discountedPrice;
+
   @Column(nullable = false, updatable = false)
   private LocalDateTime createdAt = LocalDateTime.now();
 
   @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<OrderItemEntity> orderItems;
+
 }
