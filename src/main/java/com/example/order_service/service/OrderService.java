@@ -3,14 +3,11 @@ package com.example.order_service.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import com.example.order_service.exception.LimitedStockException;
+import com.example.order_service.request.UpdateProductRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -38,6 +35,7 @@ import com.example.order_service.response.OrdersListingResponse;
 import com.example.order_service.response.ProductsResponse;
 import com.example.order_service.response.ReportResponse;
 import com.example.order_service.response.user.UserResponse;
+import feign.FeignException;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -246,23 +244,35 @@ public class OrderService {
 
         log.info("Product IDs: {}", productIds);
 
-        BaseResponse<List<Product>> productResponse = productApiClient.findProductsByIds(productIds);
+        BaseResponse<List<Product>> productResponse;
 
-        log.info("Response: '{}'", productResponse);
+        try {
+            productResponse = productApiClient.findProductsByIds(productIds);
 
-        if (productResponse.getData() == null || productResponse.getData().size() != productIds.size()) {
-            throw new CreateOrderException("One or more products don't exist");
+            log.info("Response: '{}'", productResponse);
+
+            if (productResponse.getData() == null || productResponse.getData().size() != productIds.size()) {
+                throw new CreateOrderException("One or more products don't exist");
+            }
+        } catch (FeignException.NotFound ex) {
+            throw new CreateOrderException("No products found for the given IDs: " + productIds);
+        } catch (Exception ex) {
+            throw new CreateOrderException("Failed to fetch product details: " + ex.getMessage());
         }
 
-        int j=0;
-        List<String> oosProducts = null;
-        for (int i =0; i < createOrderRequest.getItems().size() ; i++) {
-            if (createOrderRequest.getItems().get(i).getQuantity() > productResponse.getData().get(createOrderRequest.getItems().get(i).getProductId().intValue()).getStock()) {
-                j++;
-                oosProducts.add(" You can only add" + productResponse.getData().get(i).getStock() +  "products with the product id: " + createOrderRequest.getItems().get(i).getProductId() + "because of limited stock");
+
+
+        Map<Long, Integer> productMap = productResponse.getData().stream().collect(Collectors.toMap(Product::getId, Product::getStock));
+
+        List<String> oosProducts = new ArrayList<>();
+        for (int i = 0; i < createOrderRequest.getItems().size(); i++) {
+            if (createOrderRequest.getItems().get(i).getQuantity() > productMap.get(createOrderRequest.getItems().get(i).getProductId())) {
+                oosProducts.add("You can only add " + productResponse.getData().get(i).getStock() +
+                        " products with the product id: " + createOrderRequest.getItems().get(i).getProductId() +
+                        " because of limited stock");
             }
         }
-        if (j!=0)
+        if (!oosProducts.isEmpty())
             throw new LimitedStockException(oosProducts);
 
         OrderEntity orderEntity = new OrderEntity();
@@ -273,21 +283,34 @@ public class OrderService {
             throw new CreateOrderException("User response is null or invalid");
         }
 
+        UpdateProductRequest updateProductRequest = new UpdateProductRequest();
+
         List<OrderItemEntity> orderItemEntities = new ArrayList<>();
         double price = 0.0;
+        double discountedPrice = 0.0;
 
         for (int i = 0; i < productResponse.getData().size(); i++) {
             OrderItemEntity orderItem = new OrderItemEntity();
             orderItem.setProductId(productResponse.getData().get(i).getId());
             orderItem.setQuantity(createOrderRequest.getItems().get(i).getQuantity());
             orderItem.setPrice(productResponse.getData().get(i).getPrice());
+            orderItem.setDiscountPercentage(productResponse.getData().get(i).getDiscountPercentage());
+            orderItem.setDiscountedPrice(createOrderRequest.getItems().get(i).getQuantity() * (productResponse.getData().get(i).getPrice() - (productResponse.getData().get(i).getPrice() * productResponse.getData().get(i).getDiscountPercentage() / 100)));
             orderItem.setOrder(orderEntity);
 
             orderItemEntities.add(orderItem);
-            price += createOrderRequest.getItems().get(i).getQuantity() * (productResponse.getData().get(i).getPrice() - (productResponse.getData().get(i).getPrice() * productResponse.getData().get(i).getDiscountPercentage() / 100));
+
+            updateProductRequest.setStock(productResponse.getData().get(i).getStock() - createOrderRequest.getItems().get(i).getQuantity());
+            ResponseEntity<BaseResponse<Product>> updateProduct = productApiClient.updateProduct(productResponse.getData().get(i).getId(), updateProductRequest);
+
+            log.info("Update Product Response: '{}'", updateProduct.getStatusCode().is2xxSuccessful());
+
+            price += createOrderRequest.getItems().get(i).getQuantity() * productResponse.getData().get(i).getPrice();
+            discountedPrice += createOrderRequest.getItems().get(i).getQuantity() * (productResponse.getData().get(i).getPrice() - (productResponse.getData().get(i).getPrice() * productResponse.getData().get(i).getDiscountPercentage() / 100));
         }
 
         orderEntity.setTotalPrice(price);
+        orderEntity.setDiscountedPrice(discountedPrice);
         orderEntity.setOrderItems(orderItemEntities);
 
         orderRepository.save(orderEntity);

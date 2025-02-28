@@ -45,5 +45,12 @@ public class OrderItemEntity implements Serializable {
 
   @Column(nullable = false)
   private Double price;
+
+  @Column(nullable = false)
+  private Double discountPercentage;
+
+  @Column(nullable = false)
+  private Double discountedPrice;
+
 }
 
