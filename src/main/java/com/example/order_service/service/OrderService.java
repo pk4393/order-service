@@ -260,8 +260,6 @@ public class OrderService {
             throw new CreateOrderException("Failed to fetch product details: " + ex.getMessage());
         }
 
-
-
         Map<Long, Integer> productMap = productResponse.getData().stream().collect(Collectors.toMap(Product::getId, Product::getStock));
 
         List<String> oosProducts = new ArrayList<>();
@@ -286,6 +284,7 @@ public class OrderService {
         UpdateProductRequest updateProductRequest = new UpdateProductRequest();
 
         List<OrderItemEntity> orderItemEntities = new ArrayList<>();
+
         double price = 0.0;
         double discountedPrice = 0.0;
 
