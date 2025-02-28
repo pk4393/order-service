@@ -8,6 +8,8 @@ import java.util.stream.Collectors;
 
 import com.example.order_service.exception.LimitedStockException;
 import com.example.order_service.request.UpdateProductRequest;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -228,11 +230,16 @@ public class OrderService {
     }
 
 
-
     @Transactional
     public BaseResponse<String> createOrder(Integer userId, CreateOrderRequest createOrderRequest) {
 
-        ResponseEntity<BaseResponse<UserResponse>> userResponse = userApiClient.findUser(userId);
+        ResponseEntity<BaseResponse<UserResponse>> userResponse;
+
+        try {
+            userResponse = userApiClient.findUser(userId);
+        } catch (Exception e) {
+            throw new CreateOrderException("User doesn't exist");
+        }
 
         if (!userResponse.getStatusCode().is2xxSuccessful()) {
             log.error("User doesn't exist");
@@ -254,13 +261,11 @@ public class OrderService {
             if (productResponse.getData() == null || productResponse.getData().size() != productIds.size()) {
                 throw new CreateOrderException("One or more products don't exist");
             }
-        } catch (FeignException.NotFound ex) {
-            throw new CreateOrderException("No products found for the given IDs: " + productIds);
-        } catch (Exception ex) {
-            throw new CreateOrderException("Failed to fetch product details: " + ex.getMessage());
+        } catch (FeignException ex) {
+            throw new CreateOrderException("Failed to fetch product details: ");
+        } catch (HttpClientErrorException.NotFound ex) {
+            throw new CreateOrderException("One or more products don't exist");
         }
-
-
 
         Map<Long, Integer> productMap = productResponse.getData().stream().collect(Collectors.toMap(Product::getId, Product::getStock));
 
@@ -286,6 +291,7 @@ public class OrderService {
         UpdateProductRequest updateProductRequest = new UpdateProductRequest();
 
         List<OrderItemEntity> orderItemEntities = new ArrayList<>();
+
         double price = 0.0;
         double discountedPrice = 0.0;
 
@@ -301,9 +307,9 @@ public class OrderService {
             orderItemEntities.add(orderItem);
 
             updateProductRequest.setStock(productResponse.getData().get(i).getStock() - createOrderRequest.getItems().get(i).getQuantity());
-            ResponseEntity<BaseResponse<Product>> updateProduct = productApiClient.updateProduct(productResponse.getData().get(i).getId(), updateProductRequest);
+            BaseResponse<Product> updateProduct = productApiClient.updateProduct(productResponse.getData().get(i).getId(), updateProductRequest);
 
-            log.info("Update Product Response: '{}'", updateProduct.getStatusCode().is2xxSuccessful());
+            log.info("Update Product Response: '{}'", updateProduct.getStatus());
 
             price += createOrderRequest.getItems().get(i).getQuantity() * productResponse.getData().get(i).getPrice();
             discountedPrice += createOrderRequest.getItems().get(i).getQuantity() * (productResponse.getData().get(i).getPrice() - (productResponse.getData().get(i).getPrice() * productResponse.getData().get(i).getDiscountPercentage() / 100));
@@ -320,5 +326,4 @@ public class OrderService {
                 .data("Order created successfully")
                 .build();
     }
-
 }
