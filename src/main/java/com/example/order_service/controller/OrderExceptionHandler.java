@@ -61,8 +61,7 @@ public class OrderExceptionHandler {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
             .body(response);
   }
-
-
+  
   @ExceptionHandler(MissingServletRequestParameterException.class)
   public ResponseEntity<BaseResponse<String>> handleMissingRequestParameter(
       MissingServletRequestParameterException ex) {
