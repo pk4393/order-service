@@ -7,6 +7,9 @@ import com.example.order_service.response.OrdersListingResponse;
 import com.example.order_service.response.ReportResponse;
 import com.example.order_service.service.OrderService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -18,14 +21,15 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
+@Validated
 public class OrderController {
   private final OrderService orderService;
   private final ObjectMapper objectMapper;
 
   @PostMapping("/order")
   public ResponseEntity<BaseResponse<String>> createOrder(
-          @RequestParam Integer userId,
-          @Validated @RequestBody CreateOrderRequest createOrderRequest) {
+          @RequestParam @Min(1) @NotNull Integer userId,
+          @RequestBody @Valid CreateOrderRequest createOrderRequest) {
 
     BaseResponse<String> response = orderService.createOrder(userId, createOrderRequest);
 
