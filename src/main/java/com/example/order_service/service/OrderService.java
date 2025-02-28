@@ -7,6 +7,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import com.example.order_service.exception.LimitedStockException;
+import com.example.order_service.request.UpdateProductRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -260,6 +261,7 @@ public class OrderService {
         }
 
 
+
         Map<Long, Integer> productMap = productResponse.getData().stream().collect(Collectors.toMap(Product::getId, Product::getStock));
 
         List<String> oosProducts = new ArrayList<>();
@@ -273,7 +275,6 @@ public class OrderService {
         if (!oosProducts.isEmpty())
             throw new LimitedStockException(oosProducts);
 
-
         OrderEntity orderEntity = new OrderEntity();
 
         if (userResponse.getBody() != null) {
@@ -281,6 +282,8 @@ public class OrderService {
         } else {
             throw new CreateOrderException("User response is null or invalid");
         }
+
+        UpdateProductRequest updateProductRequest = new UpdateProductRequest();
 
         List<OrderItemEntity> orderItemEntities = new ArrayList<>();
         double price = 0.0;
@@ -296,6 +299,12 @@ public class OrderService {
             orderItem.setOrder(orderEntity);
 
             orderItemEntities.add(orderItem);
+
+            updateProductRequest.setStock(productResponse.getData().get(i).getStock() - createOrderRequest.getItems().get(i).getQuantity());
+            ResponseEntity<BaseResponse<Product>> updateProduct = productApiClient.updateProduct(productResponse.getData().get(i).getId(), updateProductRequest);
+
+            log.info("Update Product Response: '{}'", updateProduct.getStatusCode().is2xxSuccessful());
+
             price += createOrderRequest.getItems().get(i).getQuantity() * productResponse.getData().get(i).getPrice();
             discountedPrice += createOrderRequest.getItems().get(i).getQuantity() * (productResponse.getData().get(i).getPrice() - (productResponse.getData().get(i).getPrice() * productResponse.getData().get(i).getDiscountPercentage() / 100));
         }
