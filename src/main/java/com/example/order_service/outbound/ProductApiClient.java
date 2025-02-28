@@ -2,7 +2,6 @@ package com.example.order_service.outbound;
 
 import java.util.List;
 
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.service.annotation.GetExchange;
@@ -24,6 +23,6 @@ public interface ProductApiClient {
   BaseResponse<List<Product>> findProductsByIds(@RequestBody List<Long> productIds);
 
   @PutExchange("/{id}")
-  ResponseEntity<BaseResponse<Product>> updateProduct(@PathVariable long id,
+  BaseResponse<Product> updateProduct(@PathVariable long id,
       @RequestBody UpdateProductRequest request);
 }
