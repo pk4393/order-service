@@ -271,7 +271,9 @@ public class OrderService {
 
         List<String> oosProducts = new ArrayList<>();
         for (int i = 0; i < createOrderRequest.getItems().size(); i++) {
-            if (createOrderRequest.getItems().get(i).getQuantity() > productMap.get(createOrderRequest.getItems().get(i).getProductId())) {
+            if (productMap.get(createOrderRequest.getItems().get(i).getProductId()) == 0) {
+                oosProducts.add("Product " + createOrderRequest.getItems().get(i).getProductId() + " is OOS");
+            } else if (createOrderRequest.getItems().get(i).getQuantity() > productMap.get(createOrderRequest.getItems().get(i).getProductId())) {
                 oosProducts.add("You can only add " + productResponse.getData().get(i).getStock() +
                         " products with the product id: " + createOrderRequest.getItems().get(i).getProductId() +
                         " because of limited stock");
