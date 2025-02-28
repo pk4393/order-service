@@ -75,12 +75,20 @@ public class OrderService {
           .flatMap(orderEntity -> orderEntity.getOrderItems().stream()
               .map(OrderItemEntity::getProductId).filter(id -> id.equals(productId)).distinct())
           .toList();
+      totalProducts = orders.stream()
+          .map(orderEntity -> orderEntity.getOrderItems().stream()
+              .filter(orderItemEntity -> orderItemEntity.getProductId().equals(productId))
+              .map(OrderItemEntity::getQuantity).reduce(Integer::sum).orElse(0))
+          .reduce(Integer::sum).orElse(0);
 
     } else {
       productIds = orders.stream().flatMap(orderEntity -> orderEntity.getOrderItems().stream()
           .map(OrderItemEntity::getProductId).distinct()).toList();
+      totalProducts = orders
+          .stream().map(orderEntity -> orderEntity.getOrderItems().stream()
+              .map(OrderItemEntity::getQuantity).reduce(Integer::sum).orElse(0))
+          .reduce(Integer::sum).orElse(0);
     }
-    totalProducts = productIds.size();
     List<String> products = fetchProducts(productIds.stream().distinct().toList());
     Double totalRevenue;
     if (productId != null) {
