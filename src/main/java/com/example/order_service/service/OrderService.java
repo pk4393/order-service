@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import com.example.order_service.exception.LimitedStockException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -245,6 +246,17 @@ public class OrderService {
             throw new CreateOrderException("One or more products don't exist");
         }
 
+        int j=0;
+        List<String> oosProducts = null;
+        for (int i =0; i < createOrderRequest.getItems().size() ; i++) {
+            if (createOrderRequest.getItems().get(i).getQuantity() > productResponse.getData().get(createOrderRequest.getItems().get(i).getProductId().intValue()).getStock()) {
+                j++;
+                oosProducts.add(" You can only add" + productResponse.getData().get(i).getStock() +  "products with the product id: " + createOrderRequest.getItems().get(i).getProductId() + "because of limited stock");
+            }
+        }
+        if (j!=0)
+            throw new LimitedStockException(oosProducts);
+
         OrderEntity orderEntity = new OrderEntity();
 
         if (userResponse.getBody() != null) {
@@ -264,8 +276,7 @@ public class OrderService {
             orderItem.setOrder(orderEntity);
 
             orderItemEntities.add(orderItem);
-            price += createOrderRequest.getItems().get(i).getQuantity()
-                    * productResponse.getData().get(i).getPrice();
+            price += createOrderRequest.getItems().get(i).getQuantity() * (productResponse.getData().get(i).getPrice() - (productResponse.getData().get(i).getPrice() * productResponse.getData().get(i).getDiscountPercentage() / 100));
         }
 
         orderEntity.setTotalPrice(price);
@@ -273,10 +284,9 @@ public class OrderService {
 
         orderRepository.save(orderEntity);
 
-        // Return a BaseResponse containing the success message, now wrapped as a response
         return BaseResponse.<String>builder()
-                .status(HttpStatus.OK.name()) // Success status
-                .data("Order created successfully") // Success message
+                .status(HttpStatus.OK.name())
+                .data("Order created successfully")
                 .build();
     }
 
