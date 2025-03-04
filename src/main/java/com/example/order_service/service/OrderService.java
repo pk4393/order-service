@@ -317,7 +317,11 @@ public class OrderService {
             orderItem.setQuantity(createOrderRequest.getItems().get(i).getQuantity());
             orderItem.setPrice(productResponse.getData().get(i).getPrice());
             orderItem.setDiscountPercentage(productResponse.getData().get(i).getDiscountPercentage());
-            orderItem.setDiscountedPrice((productResponse.getData().get(i).getPrice() - ((productResponse.getData().get(i).getPrice() * productResponse.getData().get(i).getDiscountPercentage()) / 100)));
+            if (productResponse.getData().get(i).getDiscountPercentage()<=0) {
+                orderItem.setDiscountedPrice((productResponse.getData().get(i).getPrice() - ((productResponse.getData().get(i).getPrice() * productResponse.getData().get(i).getDiscountPercentage()) / 100)));
+            } else {
+                orderItem.setDiscountedPrice(productResponse.getData().get(i).getPrice());
+            }
             orderItem.setOrder(orderEntity);
 
             orderItemEntities.add(orderItem);
@@ -328,7 +332,9 @@ public class OrderService {
             log.info("Update Product Response: '{}'", updateProduct.getStatus());
 
             price += createOrderRequest.getItems().get(i).getQuantity() * productResponse.getData().get(i).getPrice();
-            discountedPrice += createOrderRequest.getItems().get(i).getQuantity() * (productResponse.getData().get(i).getPrice() - ((productResponse.getData().get(i).getPrice() * productResponse.getData().get(i).getDiscountPercentage()) / 100));
+            if (productResponse.getData().get(i).getDiscountPercentage()<=0) {
+                discountedPrice += createOrderRequest.getItems().get(i).getQuantity() * (productResponse.getData().get(i).getPrice() - ((productResponse.getData().get(i).getPrice() * productResponse.getData().get(i).getDiscountPercentage()) / 100));
+            }
         }
 
         orderEntity.setTotalPrice(price);
