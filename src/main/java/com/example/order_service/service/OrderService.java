@@ -3,13 +3,13 @@ package com.example.order_service.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
-import com.example.order_service.exception.LimitedStockException;
-import com.example.order_service.request.UpdateProductRequest;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +21,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import com.example.order_service.entity.OrderEntity;
 import com.example.order_service.entity.OrderItemEntity;
 import com.example.order_service.exception.CreateOrderException;
+import com.example.order_service.exception.LimitedStockException;
 import com.example.order_service.model.exception.InvalidOrderReportRequestException;
 import com.example.order_service.model.exception.ProductNotFoundException;
 import com.example.order_service.model.exception.UserNotFoundException;
@@ -28,6 +29,7 @@ import com.example.order_service.outbound.ProductApiClient;
 import com.example.order_service.outbound.UserApiClient;
 import com.example.order_service.outbound.model.Product;
 import com.example.order_service.repository.OrderRepository;
+import com.example.order_service.request.UpdateProductRequest;
 import com.example.order_service.request.createorder.CreateOrderRequest;
 import com.example.order_service.request.createorder.CreateOrderRequestItem;
 import com.example.order_service.response.BaseResponse;
@@ -37,8 +39,8 @@ import com.example.order_service.response.OrdersListingResponse;
 import com.example.order_service.response.ProductsResponse;
 import com.example.order_service.response.ReportResponse;
 import com.example.order_service.response.user.UserResponse;
-import feign.FeignException;
 
+import feign.FeignException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -73,6 +75,7 @@ public class OrderService {
     }
     long totalProducts;
     List<Long> productIds;
+    double totalDiscount;
     if (productId != null) {
       productIds = orders.stream()
           .flatMap(orderEntity -> orderEntity.getOrderItems().stream()
@@ -83,6 +86,13 @@ public class OrderService {
               .filter(orderItemEntity -> orderItemEntity.getProductId().equals(productId))
               .map(OrderItemEntity::getQuantity).reduce(Integer::sum).orElse(0))
           .reduce(Integer::sum).orElse(0);
+      totalDiscount = orders.stream()
+          .map(orderEntity -> orderEntity.getOrderItems().stream()
+              .filter(orderItemEntity -> orderItemEntity.getProductId().equals(productId))
+              .map(orderItemEntity -> (orderItemEntity.getPrice()
+                  - orderItemEntity.getDiscountedPrice()) * orderItemEntity.getQuantity())
+              .reduce(Double::sum).orElse(0.0))
+          .reduce(Double::sum).orElse(0.0);
 
     } else {
       productIds = orders.stream().flatMap(orderEntity -> orderEntity.getOrderItems().stream()
@@ -91,6 +101,9 @@ public class OrderService {
           .stream().map(orderEntity -> orderEntity.getOrderItems().stream()
               .map(OrderItemEntity::getQuantity).reduce(Integer::sum).orElse(0))
           .reduce(Integer::sum).orElse(0);
+      totalDiscount = orders.stream()
+          .map(orderEntity -> orderEntity.getTotalPrice() - orderEntity.getDiscountedPrice())
+          .reduce(Double::sum).orElse(0.0);
     }
     List<String> products = fetchProducts(productIds.stream().distinct().toList());
     Double totalRevenue;
@@ -105,8 +118,9 @@ public class OrderService {
       totalRevenue =
           orders.stream().map(OrderEntity::getTotalPrice).reduce(Double::sum).orElse(0.0);
     }
-    ReportResponse reportResponse = ReportResponse.builder().totalOrders(orders.size())
-        .totalProducts(totalProducts).totalRevenue(totalRevenue).products(products).build();
+    ReportResponse reportResponse =
+        ReportResponse.builder().totalOrders(orders.size()).totalProducts(totalProducts)
+            .totalRevenue(totalRevenue).products(products).totalDiscount(totalDiscount).build();
     return BaseResponse.<ReportResponse>builder().status(HttpStatus.OK.name()).data(reportResponse)
         .build();
   }

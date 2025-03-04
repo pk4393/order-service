@@ -19,5 +19,6 @@ public class ReportResponse implements Serializable {
   private long totalOrders;
   private long totalProducts;
   private Double totalRevenue;
+  private Double totalDiscount;
   private List<String> products;
 }
