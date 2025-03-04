@@ -111,12 +111,13 @@ public class OrderService {
       totalRevenue = orders.stream()
           .map(orderEntity -> orderEntity.getOrderItems().stream()
               .filter(orderItemEntity -> orderItemEntity.getProductId().equals(productId))
-              .map(orderItemEntity -> orderItemEntity.getPrice() * orderItemEntity.getQuantity())
+              .map(orderItemEntity -> orderItemEntity.getDiscountedPrice()
+                  * orderItemEntity.getQuantity())
               .reduce(Double::sum).orElse(0.0))
           .reduce(Double::sum).orElse(0.0);
     } else {
       totalRevenue =
-          orders.stream().map(OrderEntity::getTotalPrice).reduce(Double::sum).orElse(0.0);
+          orders.stream().map(OrderEntity::getDiscountedPrice).reduce(Double::sum).orElse(0.0);
     }
     ReportResponse reportResponse =
         ReportResponse.builder().totalOrders(orders.size()).totalProducts(totalProducts)
